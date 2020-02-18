@@ -10,23 +10,38 @@ import (
 
 	"github.com/darren-rose/golang-xml/model"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/robfig/cron/v3"
 )
 
+var s model.Specification
+
 func main() {
-	var s model.Specification
+	log.Println("Starting")
+
 	err := envconfig.Process("golang_xml", &s)
 	if err != nil {
 		log.Fatal(err.Error())
 		return
 	}
 
+	c := cron.New()
+	c.AddFunc("@every 1h", doWork)
+	log.Println("Scheduling work")
+	c.Start()
+
+	select {}
+}
+
+func doWork() {
+	log.Println("doWork")
+
 	if root, err := getXML(fmt.Sprintf("%s?siteCode=%s&operatorCode=%s&country=%s&language=%s", s.Url, s.SiteCode, s.OperatorCode, s.Country, s.Language)); err != nil {
-		log.Fatalf("Failed to get XML: %v", err)
+		log.Printf("Failed to get XML: %v\n", err)
 		return
 	} else {
 		filterAfterTime, err := time.Parse("2006-01-02", "2020-02-13")
 		if err != nil {
-			log.Fatalf("parse time error: %v\n", err)
+			log.Printf("parse time error: %v\n", err)
 		} else {
 			reduced := root.Medias[:0]
 			for _, media := range root.Medias {
@@ -37,7 +52,6 @@ func main() {
 			for _, media := range reduced {
 				log.Printf("%v\n", media)
 			}
-			log.Println("finished")
 		}
 	}
 }
